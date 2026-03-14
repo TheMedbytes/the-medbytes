@@ -3,17 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MBBS MCQ Portal</title>
+    <title>MBBS MCQ Portal | MedBytes</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Basic styling to keep things centered and neat */
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }
+        input { display: block; width: 80%; margin: 10px auto; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        .btn-primary { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
+        .hidden { display: none; }
+    </style>
 </head>
-<body style="text-align: center;"> <div class="container hero">
+
+<body>
+    <div class="container hero">
         <img src="logo.png" alt="MEDBYTES Logo" style="max-width: 200px; margin-bottom: 20px;">
-        
         <h1>3rd Year MBBS MCQ Bank</h1>
         <p>Pathology | Pharmacology | Microbiology | Community Medicine</p>
-        <div class="card">
+
+        <div id="login-section" class="card">
+            <h2>Student Login</h2>
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn-primary" onclick="login()">Login</button>
+            <button class="btn-primary" style="background: #28a745;" onclick="register()">Register</button>
+        </div>
+
+        <div id="practice-section" class="card hidden">
+            <h3>Welcome back, Doctor!</h3>
             <a href="subjects.html" class="btn-primary">Start Practicing</a>
+            <br><br>
+            <button onclick="location.reload()" style="background:none; border:none; color:grey; cursor:pointer;">Logout</button>
         </div>
     </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+        // Your specific Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
+            authDomain: "the-medbytes-4e614.firebaseapp.com",
+            projectId: "the-medbytes-4e614",
+            storageBucket: "the-medbytes-4e614.firebasestorage.app",
+            messagingSenderId: "508245128582",
+            appId: "1:508245128582:web:c4285259f6812a30026807",
+            measurementId: "G-GYJ0EHS7M5"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // UI Toggle Function
+        function showPractice() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('practice-section').classList.remove('hidden');
+        }
+
+        // Global functions for buttons
+        window.register = function() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    alert("Account created successfully!");
+                    showPractice();
+                })
+                .catch((error) => {
+                    alert("Registration Error: " + error.message);
+                });
+        }
+
+        window.login = function() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    alert("Login successful!");
+                    showPractice();
+                })
+                .catch((error) => {
+                    alert("Login Error: " + error.message);
+                });
+        }
+    </script>
 </body>
 </html>
