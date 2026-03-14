@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Session</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="initQuiz()">
+    <div class="container">
+        <div class="quiz-header">
+            <h3 id="subject-name">Subject</h3>
+            <div id="timer" class="timer hidden">20:00</div>
+        </div>
+        <div class="progress-bar-bg"><div id="progress-fill"></div></div>
+        
+        <div class="card">
+            <h2 id="q-text">Loading...</h2>
+            <div id="options" class="options-list"></div>
+            <div id="feedback" class="hidden">
+                <p id="feedback-msg"></p>
+                <p id="explanation"></p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
