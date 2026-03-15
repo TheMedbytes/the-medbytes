@@ -164,7 +164,10 @@
         <section id="quiz-screen" class="view hidden">
             <div class="card" style="text-align: left;">
                 <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">
-                    <span id="quiz-subject-title">Subject</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="quitQuiz()" style="background:none; color:var(--accent); padding:0; font-size: 1.2rem;" title="Quit Quiz"><i class="fas fa-arrow-left"></i></button>
+                        <span id="quiz-subject-title">Subject</span>
+                    </div>
                     <span id="quiz-timer" class="timer-badge"><i class="far fa-clock"></i> 00:00</span>
                     <span id="quiz-progress" style="color: var(--text);">0 / 0</span>
                 </div>
@@ -215,7 +218,10 @@
 
         <section id="admin-screen" class="view hidden">
             <div class="card">
-                <h2><i class="fas fa-tools"></i> Admin Control Panel</h2>
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <button onclick="showView('block-selection-screen')" style="background:none; color:var(--secondary); padding:0; font-size: 1.5rem;" title="Back"><i class="fas fa-arrow-left"></i></button>
+                    <h2 style="margin: 0;"><i class="fas fa-tools"></i> Admin Control Panel</h2>
+                </div>
                 
                 <div class="admin-section">
                     <h4><i class="fas fa-chart-bar"></i> Database Statistics</h4>
@@ -503,6 +509,14 @@
             if(allQuestions.length === 0) return alert("Not enough questions in database.");
             isMockExamMode = false; isDailyQuiz = true;
             initQuizState(allQuestions, `🔥 Daily Challenge`, 10);
+        };
+
+        // NEW: Quit Quiz Function
+        window.quitQuiz = () => {
+            if(confirm("Are you sure you want to quit the current quiz? Progress will not be saved.")) {
+                clearInterval(timerInterval);
+                showView('dashboard-screen');
+            }
         };
 
         window.openLeaderboard = async () => {
