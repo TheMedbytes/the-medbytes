@@ -116,4 +116,66 @@ button:hover { opacity: 0.9; transform: translateY(-1px); }
 /* Quiz Interface */
 .quiz-header {
     display: flex;
-    justify-content: space
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: var(--med-blue);
+}
+
+.hidden { display: none !important; }
+
+/* --- ADMIN PANEL & FORM STYLING --- */
+
+#admin-mcq-form {
+    text-align: left; /* Keeps labels and inputs aligned left for easier reading */
+}
+
+.options-input input,
+#admin-mcq-form input[type="text"],
+#admin-mcq-form input[type="email"] {
+    width: 100%;
+    box-sizing: border-box; /* Ensures padding doesn't push the width over 100% */
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+textarea {
+    width: 100%;
+    box-sizing: border-box;
+    height: 120px;
+    margin-bottom: 15px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical; /* Allows users to expand the box if needed */
+}
+
+select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background-color: white;
+    font-size: 14px;
+}
+
+/* Small adjustments for the Grid in Admin Panel */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 600px) {
+    .grid {
+        grid-template-columns: 1fr; /* Stacks inputs on mobile */
+    }
+}
