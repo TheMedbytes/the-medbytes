@@ -6,7 +6,6 @@
     <title>MedBytes | MBBS MCQ Portal</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body class="light-mode">
     
@@ -76,33 +75,9 @@
         </section>
 
         <section id="admin-screen" class="view hidden">
-            <div class="card" style="max-width: 500px;">
-                <h2>Bulk MCQ Upload</h2>
-                <p style="font-size: 0.8rem; margin-bottom: 10px;">Select an Excel file (.xlsx) with columns: subject, question, optionA, optionB, optionC, optionD, optionE, correctAnswer, explanation</p>
-                <input type="file" id="excel-file" accept=".xlsx, .xls">
-                <button onclick="uploadExcel()" style="background: #27ae60; margin-bottom: 20px;">Upload Excel File</button>
-                <hr>
-                <h2>Manual Add</h2>
-                <select id="admin-subject">
-                    <option value="Pharmacology">Pharmacology</option>
-                    <option value="Pathology">Pathology</option>
-                    <option value="Forensic Medicine">Forensic Medicine</option>
-                    <option value="Community Medicine">Community Medicine</option>
-                    <option value="Medicine">Medicine</option>
-                    <option value="Surgery">Surgery</option>
-                    <option value="Behavioral Sciences">Behavioral Sciences</option>
-                    <option value="Patient Safety">Patient Safety</option>
-                    <option value="Family Medicine">Family Medicine</option>
-                </select>
-                <textarea id="admin-question" placeholder="Question Text"></textarea>
-                <input type="text" id="admin-optA" placeholder="Option A">
-                <input type="text" id="admin-optB" placeholder="Option B">
-                <input type="text" id="admin-optC" placeholder="Option C">
-                <input type="text" id="admin-optD" placeholder="Option D">
-                <input type="text" id="admin-optE" placeholder="Option E">
-                <input type="text" id="admin-correct" placeholder="Correct Letter (A, B, C, D, E)">
-                <textarea id="admin-explanation" placeholder="Explanation"></textarea>
-                <button onclick="uploadMCQ()">Upload Single MCQ</button>
+            <div class="card">
+                <h2>Admin Panel</h2>
+                <p>Admin features have been moved to the dedicated management portal.</p>
                 <button onclick="showView('dashboard-screen')" class="btn-secondary">Back to Dashboard</button>
             </div>
         </section>
@@ -111,7 +86,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
@@ -174,64 +149,7 @@
             }
         });
 
-        // --- EXCEL UPLOAD LOGIC ---
-        window.uploadExcel = async () => {
-            const file = document.getElementById('excel-file').files[0];
-            if (!file) return alert("Please select an Excel file first.");
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                if (jsonData.length === 0) return alert("Excel sheet is empty.");
-
-                let count = 0;
-                try {
-                    for (const row of jsonData) {
-                        await addDoc(collection(db, "mcqs"), {
-                            subject: row.subject || "Unknown",
-                            question: row.question || "",
-                            optionA: String(row.optionA || ""),
-                            optionB: String(row.optionB || ""),
-                            optionC: String(row.optionC || ""),
-                            optionD: String(row.optionD || ""),
-                            optionE: String(row.optionE || ""),
-                            correctAnswer: String(row.correctAnswer || "").toUpperCase().trim(),
-                            explanation: row.explanation || ""
-                        });
-                        count++;
-                    }
-                    alert(`Successfully uploaded ${count} MCQs!`);
-                } catch (err) {
-                    alert("Error during upload: " + err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        };
-
-        // --- ADMIN MANUAL ---
-        window.uploadMCQ = async () => {
-            try {
-                await addDoc(collection(db, "mcqs"), {
-                    subject: document.getElementById('admin-subject').value,
-                    question: document.getElementById('admin-question').value,
-                    optionA: document.getElementById('admin-optA').value,
-                    optionB: document.getElementById('admin-optB').value,
-                    optionC: document.getElementById('admin-optC').value,
-                    optionD: document.getElementById('admin-optD').value,
-                    optionE: document.getElementById('admin-optE').value,
-                    correctAnswer: document.getElementById('admin-correct').value.toUpperCase().trim(),
-                    explanation: document.getElementById('admin-explanation').value
-                });
-                alert("MCQ Uploaded Successfully!");
-            } catch (e) { alert(e.message); }
-        };
-
-        // --- QUIZ ---
+        // --- QUIZ LOGIC ---
         function renderSubjects() {
             const list = document.getElementById('subject-list');
             list.innerHTML = '';
