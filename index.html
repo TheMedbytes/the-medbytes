@@ -1,293 +1,320 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MedBytes | MBBS MCQ Portal</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MedBytes | MBBS MCQ Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --text: #333;
+        }
+
+        .dark-mode {
+            --bg: #1a1a1a;
+            --card: #2d2d2d;
+            --text: #eee;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; transition: 0.3s; }
+        nav { background: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
+        .container { max-width: 800px; margin: 2rem auto; padding: 0 1rem; text-align: center; }
+        .card { background: var(--card); padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        
+        .hidden { display: none !important; }
+        button { cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; padding: 10px 20px; font-weight: 600; }
+        .btn-primary { background: var(--secondary); color: white; }
+        .btn-secondary { background: #95a5a6; color: white; margin-top: 10px; }
+        
+        /* Block Selection Styles */
+        .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
+        .btn-block { padding: 30px 10px; font-size: 1.2rem; border: 2px solid var(--secondary); background: transparent; color: var(--secondary); border-radius: 12px; }
+        .btn-block:hover { background: var(--secondary); color: white; transform: translateY(-3px); }
+
+        /* Subject Grid */
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .subject-card { background: var(--card); border: 1px solid #ddd; padding: 15px; border-radius: 10px; transition: 0.2s; }
+        .subject-card:hover { border-color: var(--secondary); }
+        
+        /* Quiz Styles */
+        .option-btn { display: block; width: 100%; text-align: left; padding: 12px; margin: 8px 0; border: 1px solid #ddd; background: var(--card); color: var(--text); border-radius: 8px; font-size: 1rem; }
+        .option-btn:disabled { cursor: not-allowed; }
+        .option-btn.correct { background: #27ae60 !important; color: white; border-color: #27ae60; }
+        .option-btn.wrong { background: #e74c3c !important; color: white; border-color: #e74c3c; }
+        
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; background: var(--card); color: var(--text); }
+        .nav-actions { display: flex; gap: 10px; align-items: center; }
+    </style>
 </head>
 <body class="light-mode">
-    
-    <nav>
-        <div class="logo">
-            <img src="logo.png" alt="Logo" id="nav-logo">
-            <span>MedBytes</span>
-        </div>
-        <div class="nav-actions">
-            <button id="admin-btn" onclick="showView('admin-screen')" title="Admin Panel"><i class="fas fa-user-shield"></i></button>
-            <button id="theme-toggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
-            <button id="logout-btn" class="hidden" onclick="handleLogout()">Logout</button>
-        </div>
-    </nav>
+    
+    <nav>
+        <div class="logo">
+            <span><i class="fas fa-microscope"></i> MedBytes</span>
+        </div>
+        <div class="nav-actions">
+            <button id="admin-btn" class="hidden" onclick="showView('admin-screen')" title="Admin Panel" style="background:#f39c12; color:white;"><i class="fas fa-user-shield"></i> Admin</button>
+            <button id="theme-toggle" title="Toggle Mode"><i class="fas fa-moon"></i></button>
+            <button id="logout-btn" class="hidden" onclick="handleLogout()" style="background:#e74c3c; color:white;">Logout</button>
+        </div>
+    </nav>
 
-    <main class="container">
-        <section id="auth-screen" class="view">
-            <div class="card">
-                <img src="logo.png" alt="Logo" class="hero-logo">
-                <h1>3rd Year MBBS MCQ Bank</h1>
-                <p>Blocks 7, 8 & 9</p>
-                <div class="auth-inputs">
-                    <input type="email" id="email" placeholder="Email Address">
-                    <input type="password" id="password" placeholder="Password">
-                    <button class="btn-primary" onclick="login()">Login</button>
-                    <button class="btn-secondary" onclick="register()">Register Account</button>
-                </div>
-            </div>
-        </section>
+    <main class="container">
+        <section id="auth-screen" class="view">
+            <div class="card">
+                <i class="fas fa-user-md fa-4x" style="color: var(--secondary); margin-bottom: 1rem;"></i>
+                <h1>Doctor Login</h1>
+                <p>Access Blocks 7, 8 & 9 MCQ Bank</p>
+                <input type="email" id="email" placeholder="Email Address">
+                <input type="password" id="password" placeholder="Password">
+                <button class="btn-primary" style="width:100%" onclick="login()">Login</button>
+                <button class="btn-secondary" style="width:100%" onclick="register()">Register Account</button>
+            </div>
+        </section>
 
-        <section id="dashboard-screen" class="view hidden">
-            <div class="welcome-bar">
-                <h2>Welcome, <span id="user-display-name">Doctor</span>!</h2>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card"><h3>0</h3><p>Solved</p></div>
-                <div class="stat-card"><h3>0%</h3><p>Accuracy</p></div>
-                <div class="stat-card"><h3>0</h3><p>Streak</p></div>
-            </div>
+        <section id="block-selection-screen" class="view hidden">
+            <div class="card">
+                <h2>Welcome, <span id="user-name-display">Doctor</span></h2>
+                <p>Please select your current study block:</p>
+                <div class="block-grid">
+                    <button class="btn-block" onclick="selectBlock(7)">Block 7</button>
+                    <button class="btn-block" onclick="selectBlock(8)">Block 8</button>
+                    <button class="btn-block" onclick="selectBlock(9)">Block 9</button>
+                </div>
+            </div>
+        </section>
 
-            <div class="card" style="margin-bottom: 20px; max-width: 100%;">
-                <h4>Quiz Mode</h4>
-                <div class="mode-options">
-                    <label><input type="radio" name="quiz-mode" value="practice" checked> Practice</label>
-                    <label><input type="radio" name="quiz-mode" value="exam"> Exam (Timed)</label>
-                </div>
-            </div>
+        <section id="dashboard-screen" class="view hidden">
+            <div class="welcome-bar" style="margin-bottom: 20px; overflow: hidden;">
+                <button onclick="showView('block-selection-screen')" style="background:none; color:var(--secondary); float:left; padding:0;"><i class="fas fa-chevron-left"></i> Change Block</button>
+                <h2 style="margin-top: 40px;">Block <span id="current-block-id">?</span> Subjects</h2>
+            </div>
+            <div class="subject-grid" id="subject-list"></div>
+        </section>
 
-            <h3>Subjects</h3>
-            <div class="subject-grid" id="subject-list"></div>
-        </section>
+        <section id="quiz-screen" class="view hidden">
+            <div class="card" style="text-align: left;">
+                <div style="display:flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">
+                    <span id="quiz-subject-title">Subject</span>
+                    <span id="quiz-progress">0 / 0</span>
+                </div>
+                <h3 id="question-text">Loading...</h3>
+                <div id="options-list"></div>
+                
+                <div id="explanation-box" class="hidden" style="margin-top: 25px; padding: 15px; background: rgba(52, 152, 219, 0.1); border-left: 5px solid var(--secondary); border-radius: 5px;">
+                    <p><strong><i class="fas fa-info-circle"></i> Explanation:</strong></p>
+                    <p id="explanation-text" style="line-height: 1.5;"></p>
+                    <button class="btn-primary" style="width:100%; margin-top: 15px;" onclick="loadNextQuestion()">Next Question <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </section>
 
-        <section id="quiz-screen" class="view hidden">
-            <div class="quiz-header">
-                <span id="quiz-subject-title">Subject</span>
-                <span id="quiz-progress">0 / 0</span>
-            </div>
-            <div class="card" style="max-width: 100%; text-align: left;">
-                <h2 id="question-text">Loading...</h2>
-                <div id="options-list"></div>
-                <div id="explanation-box" class="hidden">
-                    <p id="explanation-text"></p>
-                    <button class="btn-primary" onclick="loadNextQuestion()">Next Question</button>
-                </div>
-            </div>
-        </section>
+        <section id="admin-screen" class="view hidden">
+            <div class="card">
+                <h2><i class="fas fa-cloud-upload-alt"></i> Bulk MCQ Upload</h2>
+                <p style="font-size: 0.9rem; color: #666;">Format: block, subject, question, optionA, optionB, optionC, optionD, optionE, correctAnswer, explanation</p>
+                <input type="file" id="excel-file" accept=".xlsx, .xls">
+                <button onclick="uploadExcel()" class="btn-primary" style="background: #27ae60; width: 100%;">Process Excel File</button>
+                <hr style="margin: 20px 0;">
+                <button onclick="showView('block-selection-screen')" class="btn-secondary" style="width: 100%;">Back to App</button>
+            </div>
+        </section>
+    </main>
 
-        <section id="admin-screen" class="view hidden">
-            <div class="card" style="max-width: 500px;">
-                <h2>Bulk MCQ Upload</h2>
-                <p style="font-size: 0.8rem; margin-bottom: 10px;">Select an Excel file (.xlsx) with columns: subject, question, optionA, optionB, optionC, optionD, optionE, correctAnswer, explanation</p>
-                <input type="file" id="excel-file" accept=".xlsx, .xls">
-                <button onclick="uploadExcel()" style="background: #27ae60; margin-bottom: 20px;">Upload Excel File</button>
-                <hr>
-                <h2>Manual Add</h2>
-                <select id="admin-subject">
-                    <option value="Pharmacology">Pharmacology</option>
-                    <option value="Pathology">Pathology</option>
-                    <option value="Forensic Medicine">Forensic Medicine</option>
-                    <option value="Community Medicine">Community Medicine</option>
-                    <option value="Medicine">Medicine</option>
-                    <option value="Surgery">Surgery</option>
-                    <option value="Behavioral Sciences">Behavioral Sciences</option>
-                    <option value="Patient Safety">Patient Safety</option>
-                    <option value="Family Medicine">Family Medicine</option>
-                </select>
-                <textarea id="admin-question" placeholder="Question Text"></textarea>
-                <input type="text" id="admin-optA" placeholder="Option A">
-                <input type="text" id="admin-optB" placeholder="Option B">
-                <input type="text" id="admin-optC" placeholder="Option C">
-                <input type="text" id="admin-optD" placeholder="Option D">
-                <input type="text" id="admin-optE" placeholder="Option E">
-                <input type="text" id="admin-correct" placeholder="Correct Letter (A, B, C, D, E)">
-                <textarea id="admin-explanation" placeholder="Explanation"></textarea>
-                <button onclick="uploadMCQ()">Upload Single MCQ</button>
-                <button onclick="showView('dashboard-screen')" class="btn-secondary">Back to Dashboard</button>
-            </div>
-        </section>
-    </main>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        const firebaseConfig = {
+            apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
+            authDomain: "the-medbytes-4e614.firebaseapp.com",
+            projectId: "the-medbytes-4e614",
+            storageBucket: "the-medbytes-4e614.firebasestorage.app",
+            messagingSenderId: "508245128582",
+            appId: "1:508245128582:web:c4285259f6812a30026807"
+        };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
-            authDomain: "the-medbytes-4e614.firebaseapp.com",
-            projectId: "the-medbytes-4e614",
-            storageBucket: "the-medbytes-4e614.firebasestorage.app",
-            messagingSenderId: "508245128582",
-            appId: "1:508245128582:web:c4285259f6812a30026807",
-            measurementId: "G-GYJ0EHS7M5"
-        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        const blockMapping = {
+            7: ["Pharmacology", "Pathology", "Medicine"],
+            8: ["Forensic Medicine", "Community Medicine", "Surgery"],
+            9: ["Behavioral Sciences", "Patient Safety", "Family Medicine"]
+        };
 
-        const subjects = ["Pharmacology", "Pathology", "Forensic Medicine", "Community Medicine", "Medicine", "Surgery", "Behavioral Sciences", "Patient Safety", "Family Medicine"];
-        let currentQuestions = [];
-        let currentIndex = 0;
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let selectedBlock = null;
 
-        // --- THEME LOGIC ---
-        const themeBtn = document.getElementById('theme-toggle');
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
-            themeBtn.innerHTML = '<i class="fas fa-sun"></i>';
-        }
-        themeBtn.onclick = () => {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-        };
+        // View Controller
+        window.showView = (id) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0,0);
+        };
 
-        window.showView = (id) => {
-            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        };
+        // Theme Toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        themeBtn.onclick = () => {
+            document.body.classList.toggle('dark-mode');
+            themeBtn.innerHTML = document.body.classList.contains('dark-mode') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        };
 
-        // --- AUTH ---
-        window.login = () => {
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value;
-            signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
-        };
-        window.register = () => {
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value;
-            createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
-        };
-        window.handleLogout = () => signOut(auth).then(() => location.reload());
+        // Auth
+        window.login = () => {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            if(!email || !password) return alert("Fill all fields");
+            signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+        };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('user-display-name').innerText = user.email.split('@')[0];
-                document.getElementById('logout-btn').classList.remove('hidden');
-                showView('dashboard-screen');
-                renderSubjects();
-            } else {
-                showView('auth-screen');
-                document.getElementById('logout-btn').classList.add('hidden');
-            }
-        });
+        window.register = () => {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
+        };
 
-        // --- EXCEL UPLOAD LOGIC ---
-        window.uploadExcel = async () => {
-            const file = document.getElementById('excel-file').files[0];
-            if (!file) return alert("Please select an Excel file first.");
+        window.handleLogout = () => signOut(auth).then(() => location.reload());
 
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('user-name-display').innerText = user.email.split('@')[0].toUpperCase();
+                document.getElementById('logout-btn').classList.remove('hidden');
+                
+                // Admin Email Check
+                if(user.email === 'themedbytes@gmail.com') {
+                    document.getElementById('admin-btn').classList.remove('hidden');
+                }
+                
+                showView('block-selection-screen');
+            } else {
+                showView('auth-screen');
+                document.getElementById('logout-btn').classList.add('hidden');
+                document.getElementById('admin-btn').classList.add('hidden');
+            }
+        });
 
-                if (jsonData.length === 0) return alert("Excel sheet is empty.");
+        // App Logic
+        window.selectBlock = (block) => {
+            selectedBlock = block;
+            document.getElementById('current-block-id').innerText = block;
+            const list = document.getElementById('subject-list');
+            list.innerHTML = '';
+            
+            blockMapping[block].forEach(sub => {
+                const div = document.createElement('div');
+                div.className = 'subject-card';
+                div.innerHTML = `
+                    <i class="fas fa-book-medical" style="color:var(--secondary); font-size: 1.5rem;"></i>
+                    <h4 style="margin: 10px 0;">${sub}</h4>
+                    <button class="btn-primary" onclick="startQuiz('${sub}')">Enter Module</button>
+                `;
+                list.appendChild(div);
+            });
+            showView('dashboard-screen');
+        };
 
-                let count = 0;
-                try {
-                    for (const row of jsonData) {
-                        await addDoc(collection(db, "mcqs"), {
-                            subject: row.subject || "Unknown",
-                            question: row.question || "",
-                            optionA: String(row.optionA || ""),
-                            optionB: String(row.optionB || ""),
-                            optionC: String(row.optionC || ""),
-                            optionD: String(row.optionD || ""),
-                            optionE: String(row.optionE || ""),
-                            correctAnswer: String(row.correctAnswer || "").toUpperCase().trim(),
-                            explanation: row.explanation || ""
-                        });
-                        count++;
-                    }
-                    alert(`Successfully uploaded ${count} MCQs!`);
-                } catch (err) {
-                    alert("Error during upload: " + err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        };
+        window.startQuiz = async (subject) => {
+            const q = query(collection(db, "mcqs"), 
+                        where("subject", "==", subject), 
+                        where("block", "==", Number(selectedBlock)));
+            
+            const snapshot = await getDocs(q);
+            currentQuestions = snapshot.docs.map(doc => doc.data()).sort(() => Math.random() - 0.5);
+            
+            if (currentQuestions.length === 0) return alert("No MCQs found for this subject in this block yet.");
+            
+            currentIndex = 0;
+            showView('quiz-screen');
+            loadQuestion();
+        };
 
-        // --- ADMIN MANUAL ---
-        window.uploadMCQ = async () => {
-            try {
-                await addDoc(collection(db, "mcqs"), {
-                    subject: document.getElementById('admin-subject').value,
-                    question: document.getElementById('admin-question').value,
-                    optionA: document.getElementById('admin-optA').value,
-                    optionB: document.getElementById('admin-optB').value,
-                    optionC: document.getElementById('admin-optC').value,
-                    optionD: document.getElementById('admin-optD').value,
-                    optionE: document.getElementById('admin-optE').value,
-                    correctAnswer: document.getElementById('admin-correct').value.toUpperCase().trim(),
-                    explanation: document.getElementById('admin-explanation').value
-                });
-                alert("MCQ Uploaded Successfully!");
-            } catch (e) { alert(e.message); }
-        };
+        function loadQuestion() {
+            const data = currentQuestions[currentIndex];
+            document.getElementById('quiz-subject-title').innerText = data.subject;
+            document.getElementById('quiz-progress').innerText = `${currentIndex + 1} / ${currentQuestions.length}`;
+            document.getElementById('question-text').innerText = data.question;
+            document.getElementById('explanation-box').classList.add('hidden');
+            
+            const list = document.getElementById('options-list');
+            list.innerHTML = '';
+            
+            ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
+                const optText = data['option' + letter];
+                if(!optText || optText === "undefined" || optText === "") return;
 
-        // --- QUIZ ---
-        function renderSubjects() {
-            const list = document.getElementById('subject-list');
-            list.innerHTML = '';
-            subjects.forEach(s => {
-                const div = document.createElement('div');
-                div.className = 'subject-card';
-                div.innerHTML = `<h4>${s}</h4><button onclick="startQuiz('${s}')">Start Quiz</button>`;
-                list.appendChild(div);
-            });
-        }
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.dataset.letter = letter;
+                btn.innerHTML = `<strong>${letter}</strong>: ${optText}`;
+                
+                btn.onclick = () => {
+                    const correct = data.correctAnswer.trim().toUpperCase();
+                    document.querySelectorAll('.option-btn').forEach(b => {
+                        b.disabled = true;
+                        if(b.dataset.letter === correct) b.classList.add('correct');
+                        if(b.dataset.letter === letter && letter !== correct) b.classList.add('wrong');
+                    });
+                    document.getElementById('explanation-text').innerText = data.explanation || "No specific explanation available for this MCQ.";
+                    document.getElementById('explanation-box').classList.remove('hidden');
+                };
+                list.appendChild(btn);
+            });
+        }
 
-        window.startQuiz = async (subject) => {
-            const mode = document.querySelector('input[name="quiz-mode"]:checked').value;
-            const q = query(collection(db, "mcqs"), where("subject", "==", subject));
-            const snapshot = await getDocs(q);
-            currentQuestions = snapshot.docs.map(doc => doc.data()).sort(() => Math.random() - 0.5);
-            
-            if (mode === 'exam') currentQuestions = currentQuestions.slice(0, 20);
-            if (currentQuestions.length === 0) return alert("No questions found for this subject.");
+        window.loadNextQuestion = () => {
+            currentIndex++;
+            if (currentIndex < currentQuestions.length) loadQuestion();
+            else { 
+                alert("Subject Module Complete!"); 
+                showView('dashboard-screen'); 
+            }
+        };
 
-            currentIndex = 0;
-            showView('quiz-screen');
-            loadQuestion();
-        };
+        // Admin Function
+        window.uploadExcel = async () => {
+            const file = document.getElementById('excel-file').files[0];
+            if (!file) return alert("Please select an Excel file (.xlsx)");
 
-        function loadQuestion() {
-            const data = currentQuestions[currentIndex];
-            document.getElementById('quiz-subject-title').innerText = data.subject;
-            document.getElementById('quiz-progress').innerText = `${currentIndex + 1} / ${currentQuestions.length}`;
-            document.getElementById('question-text').innerText = data.question;
-            document.getElementById('explanation-box').classList.add('hidden');
-            const list = document.getElementById('options-list');
-            list.innerHTML = '';
-            ['A', 'B', 'C', 'D', 'E'].forEach(l => {
-                const b = document.createElement('button');
-                b.className = 'option-btn';
-                b.innerText = `${l}: ${data['option' + l]}`;
-                b.onclick = () => {
-                    const correct = data.correctAnswer;
-                    document.querySelectorAll('.option-btn').forEach(btn => {
-                        btn.disabled = true;
-                        if(btn.innerText.startsWith(correct)) btn.classList.add('correct');
-                        else if(btn.innerText.startsWith(l)) btn.classList.add('wrong');
-                    });
-                    document.getElementById('explanation-text').innerText = data.explanation;
-                    document.getElementById('explanation-box').classList.remove('hidden');
-                };
-                list.appendChild(b);
-            });
-        }
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-        window.loadNextQuestion = () => {
-            currentIndex++;
-            if (currentIndex < currentQuestions.length) loadQuestion();
-            else { alert("Quiz Complete!"); showView('dashboard-screen'); }
-        };
-    </script>
+                let count = 0;
+                for (const row of json) {
+                    try {
+                        await addDoc(collection(db, "mcqs"), {
+                            block: Number(row.block),
+                            subject: row.subject.trim(),
+                            question: row.question,
+                            optionA: String(row.optionA),
+                            optionB: String(row.optionB),
+                            optionC: String(row.optionC),
+                            optionD: String(row.optionD),
+                            optionE: String(row.optionE || ""),
+                            correctAnswer: String(row.correctAnswer).trim().toUpperCase(),
+                            explanation: row.explanation || ""
+                        });
+                        count++;
+                    } catch (err) { console.error("Row skip:", err); }
+                }
+                alert(`Successfully uploaded ${count} MCQs!`);
+                location.reload();
+            };
+            reader.readAsArrayBuffer(file);
+        };
+    </script>
 </body>
 </html>
