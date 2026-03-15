@@ -33,17 +33,14 @@
         .btn-primary { background: var(--secondary); color: white; }
         .btn-secondary { background: #95a5a6; color: white; margin-top: 10px; }
         
-        /* Block Selection Styles */
         .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
         .btn-block { padding: 30px 10px; font-size: 1.2rem; border: 2px solid var(--secondary); background: transparent; color: var(--secondary); border-radius: 12px; }
         .btn-block:hover { background: var(--secondary); color: white; transform: translateY(-3px); }
 
-        /* Subject Grid */
         .subject-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .subject-card { background: var(--card); border: 1px solid #ddd; padding: 15px; border-radius: 10px; transition: 0.2s; }
         .subject-card:hover { border-color: var(--secondary); }
         
-        /* Quiz Styles */
         .option-btn { display: block; width: 100%; text-align: left; padding: 12px; margin: 8px 0; border: 1px solid #ddd; background: var(--card); color: var(--text); border-radius: 8px; font-size: 1rem; }
         .option-btn:disabled { cursor: not-allowed; }
         .option-btn.correct { background: #27ae60 !important; color: white; border-color: #27ae60; }
@@ -51,6 +48,8 @@
         
         input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; background: var(--card); color: var(--text); }
         .nav-actions { display: flex; gap: 10px; align-items: center; }
+        
+        .admin-section { text-align: left; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
     </style>
 </head>
 <body class="light-mode">
@@ -118,10 +117,20 @@
 
         <section id="admin-screen" class="view hidden">
             <div class="card">
-                <h2><i class="fas fa-cloud-upload-alt"></i> Bulk MCQ Upload</h2>
-                <p style="font-size: 0.9rem; color: #666;">Format: block, subject, question, optionA, optionB, optionC, optionD, optionE, correctAnswer, explanation</p>
-                <input type="file" id="excel-file" accept=".xlsx, .xls">
-                <button onclick="uploadExcel()" class="btn-primary" style="background: #27ae60; width: 100%;">Process Excel File</button>
+                <h2><i class="fas fa-tools"></i> Admin Control Panel</h2>
+                
+                <div class="admin-section">
+                    <h4><i class="fas fa-file-excel"></i> Bulk Upload (Excel)</h4>
+                    <input type="file" id="excel-file" accept=".xlsx, .xls">
+                    <button onclick="uploadExcel()" class="btn-primary" style="background: #27ae60; width: 100%;">Upload Excel</button>
+                </div>
+
+                <div class="admin-section">
+                    <h4><i class="fas fa-code"></i> Bulk Upload (JSON)</h4>
+                    <textarea id="json-input" rows="8" placeholder='[{"block": 9, "subject": "Family Medicine", "question": "Example?", ...}]'></textarea>
+                    <button onclick="uploadJSON()" class="btn-primary" style="width: 100%;">Upload JSON Data</button>
+                </div>
+
                 <hr style="margin: 20px 0;">
                 <button onclick="showView('block-selection-screen')" class="btn-secondary" style="width: 100%;">Back to App</button>
             </div>
@@ -146,61 +155,45 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        const blockMapping = {
-            7: ["Pharmacology", "Pathology", "Medicine"],
-            8: ["Forensic Medicine", "Community Medicine", "Surgery"],
-            9: ["Behavioral Sciences", "Patient Safety", "Family Medicine"]
-        };
+        // Subjects configuration
+        const commonSubjects = ["Pharmacology", "Pathology", "Medicine", "Forensic Medicine", "Community Medicine", "Surgery", "Behavioral Sciences", "Patient Safety"];
 
         let currentQuestions = [];
         let currentIndex = 0;
         let selectedBlock = null;
 
-        // View Controller
         window.showView = (id) => {
             document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
-            window.scrollTo(0,0);
         };
 
-        // Theme Toggle
         const themeBtn = document.getElementById('theme-toggle');
         themeBtn.onclick = () => {
             document.body.classList.toggle('dark-mode');
             themeBtn.innerHTML = document.body.classList.contains('dark-mode') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         };
 
-        // Auth
+        // Auth Functions
         window.login = () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
-            if(!email || !password) return alert("Fill all fields");
             signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
         };
-
         window.register = () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
         };
-
         window.handleLogout = () => signOut(auth).then(() => location.reload());
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('user-name-display').innerText = user.email.split('@')[0].toUpperCase();
                 document.getElementById('logout-btn').classList.remove('hidden');
-                
-                // Admin Email Check
-                if(user.email === 'themedbytes@gmail.com') {
-                    document.getElementById('admin-btn').classList.remove('hidden');
-                }
-                
+                if(user.email === 'themedbytes@gmail.com') document.getElementById('admin-btn').classList.remove('hidden');
                 showView('block-selection-screen');
             } else {
                 showView('auth-screen');
-                document.getElementById('logout-btn').classList.add('hidden');
-                document.getElementById('admin-btn').classList.add('hidden');
             }
         });
 
@@ -211,14 +204,14 @@
             const list = document.getElementById('subject-list');
             list.innerHTML = '';
             
-            blockMapping[block].forEach(sub => {
+            // Generate list: All common subjects + Family Medicine if Block 9
+            let subjects = [...commonSubjects];
+            if(block === 9) subjects.push("Family Medicine");
+
+            subjects.forEach(sub => {
                 const div = document.createElement('div');
                 div.className = 'subject-card';
-                div.innerHTML = `
-                    <i class="fas fa-book-medical" style="color:var(--secondary); font-size: 1.5rem;"></i>
-                    <h4 style="margin: 10px 0;">${sub}</h4>
-                    <button class="btn-primary" onclick="startQuiz('${sub}')">Enter Module</button>
-                `;
+                div.innerHTML = `<h4>${sub}</h4><button class="btn-primary" onclick="startQuiz('${sub}')">Start Quiz</button>`;
                 list.appendChild(div);
             });
             showView('dashboard-screen');
@@ -232,8 +225,7 @@
             const snapshot = await getDocs(q);
             currentQuestions = snapshot.docs.map(doc => doc.data()).sort(() => Math.random() - 0.5);
             
-            if (currentQuestions.length === 0) return alert("No MCQs found for this subject in this block yet.");
-            
+            if (currentQuestions.length === 0) return alert("No questions found.");
             currentIndex = 0;
             showView('quiz-screen');
             loadQuestion();
@@ -245,19 +237,16 @@
             document.getElementById('quiz-progress').innerText = `${currentIndex + 1} / ${currentQuestions.length}`;
             document.getElementById('question-text').innerText = data.question;
             document.getElementById('explanation-box').classList.add('hidden');
-            
             const list = document.getElementById('options-list');
             list.innerHTML = '';
             
             ['A', 'B', 'C', 'D', 'E'].forEach(letter => {
                 const optText = data['option' + letter];
-                if(!optText || optText === "undefined" || optText === "") return;
-
+                if(!optText) return;
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
                 btn.dataset.letter = letter;
                 btn.innerHTML = `<strong>${letter}</strong>: ${optText}`;
-                
                 btn.onclick = () => {
                     const correct = data.correctAnswer.trim().toUpperCase();
                     document.querySelectorAll('.option-btn').forEach(b => {
@@ -265,7 +254,7 @@
                         if(b.dataset.letter === correct) b.classList.add('correct');
                         if(b.dataset.letter === letter && letter !== correct) b.classList.add('wrong');
                     });
-                    document.getElementById('explanation-text').innerText = data.explanation || "No specific explanation available for this MCQ.";
+                    document.getElementById('explanation-text').innerText = data.explanation || "No explanation.";
                     document.getElementById('explanation-box').classList.remove('hidden');
                 };
                 list.appendChild(btn);
@@ -275,45 +264,52 @@
         window.loadNextQuestion = () => {
             currentIndex++;
             if (currentIndex < currentQuestions.length) loadQuestion();
-            else { 
-                alert("Subject Module Complete!"); 
-                showView('dashboard-screen'); 
-            }
+            else { alert("Module Complete!"); showView('dashboard-screen'); }
         };
 
-        // Admin Function
-        window.uploadExcel = async () => {
+        // ADMIN UPLOADS
+        const processUpload = async (dataArray) => {
+            let count = 0;
+            for (const row of dataArray) {
+                try {
+                    await addDoc(collection(db, "mcqs"), {
+                        block: Number(row.block),
+                        subject: row.subject.trim(),
+                        question: row.question,
+                        optionA: String(row.optionA),
+                        optionB: String(row.optionB),
+                        optionC: String(row.optionC),
+                        optionD: String(row.optionD),
+                        optionE: String(row.optionE || ""),
+                        correctAnswer: String(row.correctAnswer).trim().toUpperCase(),
+                        explanation: row.explanation || ""
+                    });
+                    count++;
+                } catch (e) { console.error(e); }
+            }
+            alert(`Uploaded ${count} MCQs successfully!`);
+            location.reload();
+        };
+
+        window.uploadExcel = () => {
             const file = document.getElementById('excel-file').files[0];
-            if (!file) return alert("Please select an Excel file (.xlsx)");
-
+            if (!file) return alert("Select file");
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
+            reader.onload = (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-                let count = 0;
-                for (const row of json) {
-                    try {
-                        await addDoc(collection(db, "mcqs"), {
-                            block: Number(row.block),
-                            subject: row.subject.trim(),
-                            question: row.question,
-                            optionA: String(row.optionA),
-                            optionB: String(row.optionB),
-                            optionC: String(row.optionC),
-                            optionD: String(row.optionD),
-                            optionE: String(row.optionE || ""),
-                            correctAnswer: String(row.correctAnswer).trim().toUpperCase(),
-                            explanation: row.explanation || ""
-                        });
-                        count++;
-                    } catch (err) { console.error("Row skip:", err); }
-                }
-                alert(`Successfully uploaded ${count} MCQs!`);
-                location.reload();
+                processUpload(json);
             };
             reader.readAsArrayBuffer(file);
+        };
+
+        window.uploadJSON = () => {
+            const raw = document.getElementById('json-input').value;
+            try {
+                const data = JSON.parse(raw);
+                if(!Array.isArray(data)) throw new Error("Must be an array");
+                processUpload(data);
+            } catch (e) { alert("Invalid JSON format: " + e.message); }
         };
     </script>
 </body>
