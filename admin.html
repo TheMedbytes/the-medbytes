@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedBytes | Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2><i class="fas fa-user-shield"></i> MCQ Admin Manager</h2>
+            <p>Fill in the details below to add a new MBBS question.</p>
+            <hr>
+            
+            <form id="admin-mcq-form">
+                <div class="grid">
+                    <select id="adm-subject" required>
+                        <option value="" disabled selected>Select Subject</option>
+                        <option value="Pharmacology">Pharmacology</option>
+                        <option value="Pathology">Pathology</option>
+                        <option value="Forensic Medicine">Forensic Medicine</option>
+                        <option value="Community Medicine">Community Medicine</option>
+                        <option value="Medicine">Medicine</option>
+                        <option value="Surgery">Surgery</option>
+                        <option value="Behavioral Sciences">Behavioral Sciences</option>
+                        <option value="Patient Safety">Patient Safety</option>
+                        <option value="Family Medicine">Family Medicine</option>
+                    </select>
+                    
+                    <select id="adm-correct" required>
+                        <option value="" disabled selected>Correct Answer</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                    </select>
+                </div>
+
+                <textarea id="adm-question" placeholder="Enter Question Text" required></textarea>
+                
+                <div class="options-input">
+                    <input type="text" id="adm-optA" placeholder="Option A" required>
+                    <input type="text" id="adm-optB" placeholder="Option B" required>
+                    <input type="text" id="adm-optC" placeholder="Option C" required>
+                    <input type="text" id="adm-optD" placeholder="Option D" required>
+                    <input type="text" id="adm-optE" placeholder="Option E" required>
+                </div>
+
+                <textarea id="adm-explanation" placeholder="Enter Explanation" required></textarea>
+                
+                <button type="submit" class="btn-primary" style="width: 100%;">Upload to Firebase</button>
+            </form>
+            <br>
+            <a href="subjects.html" style="text-decoration: none; color: grey;">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script type="module" src="admin-script.js"></script>
+</body>
+</html>
