@@ -3,71 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedBytes | Admin Panel</title>
+    <title>MedBytes | Admin Management</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-    <div class="container">
+    <nav>
+        <div class="logo"><span>MedBytes Admin</span></div>
+        <button onclick="window.location.href='index.html'">View Portal</button>
+    </nav>
+
+    <main class="container">
         <div class="card">
-            <h2><i class="fas fa-user-shield"></i> MCQ Admin Manager</h2>
-            <p>Add a single MBBS question or use Bulk Upload below.</p>
-            <hr>
-            
-            <form id="admin-mcq-form">
-                <div class="grid">
-                    <select id="adm-subject" required>
-                        <option value="" disabled selected>Select Subject</option>
-                        <option value="Pharmacology">Pharmacology</option>
-                        <option value="Pathology">Pathology</option>
-                        <option value="Forensic Medicine">Forensic Medicine</option>
-                        <option value="Community Medicine">Community Medicine</option>
-                        <option value="Medicine">Medicine</option>
-                        <option value="Surgery">Surgery</option>
-                        <option value="Behavioral Sciences">Behavioral Sciences</option>
-                        <option value="Patient Safety">Patient Safety</option>
-                        <option value="Family Medicine">Family Medicine</option>
-                    </select>
-                    
-                    <select id="adm-correct" required>
-                        <option value="" disabled selected>Correct Answer</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                        <option value="E">E</option>
-                    </select>
-                </div>
-
-                <textarea id="adm-question" placeholder="Enter Question Text" required></textarea>
-                
-                <div class="options-input">
-                    <input type="text" id="adm-optA" placeholder="Option A" required>
-                    <input type="text" id="adm-optB" placeholder="Option B" required>
-                    <input type="text" id="adm-optC" placeholder="Option C" required>
-                    <input type="text" id="adm-optD" placeholder="Option D" required>
-                    <input type="text" id="adm-optE" placeholder="Option E" required>
-                </div>
-
-                <textarea id="adm-explanation" placeholder="Enter Explanation" required></textarea>
-                
-                <button type="submit" class="btn-primary" style="width: 100%;">Upload Single MCQ</button>
-            </form>
-
-            <hr style="margin: 30px 0;">
-
-            <div class="bulk-section" style="text-align: left;">
-                <h3><i class="fas fa-file-import"></i> Bulk Upload (JSON)</h3>
-                <p style="font-size: 0.8rem; color: #666;">Paste an array of questions here to upload multiple at once.</p>
-                <textarea id="bulk-json-input" style="height: 150px; font-family: monospace;" placeholder='[{"subject": "Pathology", "question": "...", "optionA": "...", ...}]'></textarea>
-                <button id="bulk-upload-btn" class="btn-secondary" style="width: 100%; background-color: #6f42c1;">Upload All Questions</button>
-            </div>
-
-            <br>
-            <a href="subjects.html" style="text-decoration: none; color: grey;"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <h2>Excel Bulk Upload</h2>
+            <input type="file" id="excel-file" accept=".xlsx, .xls">
+            <button class="btn-primary" onclick="uploadExcel()" style="background:#27ae60">Process Excel</button>
         </div>
-    </div>
 
-    <script type="module" src="admin-script.js"></script>
+        <div class="card" style="margin-top: 20px;">
+            <h2>JSON Bulk Upload</h2>
+            <textarea id="json-input" placeholder="Paste JSON array here..." style="width:100%; height:150px; margin-bottom:10px;"></textarea>
+            <button class="btn-primary" onclick="uploadJSON()" style="background:#2980b9">Process JSON</button>
+        </div>
+
+        <div id="status-log" style="margin-top:20px; color: #7f8c8d; font-family: monospace;"></div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        // Your specific config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
+            authDomain: "the-medbytes-4e614.firebaseapp.com",
+            projectId: "the-medbytes-4e614",
+            storageBucket: "the-medbytes-4e614.firebasestorage.app",
+            messagingSenderId: "508245128582",
+            appId: "1:508245128582:web:c4285259f6812a30026807"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const log = (msg) => {
+            const div = document.getElementById('status-log');
+            div.innerHTML += `> ${msg}<br>`;
+        };
+
+        // Common uploader function
+        async function saveToFirestore(dataArray) {
+            log(`Starting upload of ${dataArray.length} items...`);
+            let count = 0;
+            for (const item of dataArray) {
+                try {
+                    await addDoc(collection(db, "mcqs"), {
+                        subject: item.subject,
+                        question: item.question,
+                        optionA: String(item.optionA),
+                        optionB: String(item.optionB),
+                        optionC: String(item.optionC),
+                        optionD: String(item.optionD),
+                        optionE: String(item.optionE),
+                        correctAnswer: String(item.correctAnswer).toUpperCase().trim(),
+                        explanation: item.explanation || ""
+                    });
+                    count++;
+                } catch (e) { log(`Error at item ${count}: ${e.message}`); }
+            }
+            log(`Upload Complete! Success: ${count}`);
+            alert(`Uploaded ${count} MCQs successfully.`);
+        }
+
+        window.uploadExcel = () => {
+            const file = document.getElementById('excel-file').files[0];
+            if (!file) return alert("Select a file first.");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                saveToFirestore(data);
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        window.uploadJSON = () => {
+            try {
+                const data = JSON.parse(document.getElementById('json-input').value);
+                if(!Array.isArray(data)) throw new Error("Input must be a JSON array.");
+                saveToFirestore(data);
+            } catch (e) { alert("Invalid JSON: " + e.message); }
+        };
+    </script>
 </body>
 </html>
