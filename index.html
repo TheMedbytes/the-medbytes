@@ -32,6 +32,7 @@
         button { cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; padding: 10px 20px; font-weight: 600; }
         .btn-primary { background: var(--secondary); color: white; }
         .btn-secondary { background: #95a5a6; color: white; margin-top: 10px; }
+        .btn-warning { background: #f39c12; color: white; margin-top: 10px; }
         
         .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px; }
         .btn-block { padding: 30px 10px; font-size: 1.2rem; border: 2px solid var(--secondary); background: transparent; color: var(--secondary); border-radius: 12px; }
@@ -50,6 +51,11 @@
         .nav-actions { display: flex; gap: 10px; align-items: center; }
         
         .admin-section { text-align: left; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+
+        /* New Styles for Score and Review */
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; background: var(--secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; margin: 0 auto 20px; border: 8px solid rgba(52, 152, 219, 0.3); }
+        .mistake-card { text-align: left; border-left: 4px solid var(--accent); background: rgba(231, 76, 60, 0.05); padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; }
+        .timer-badge { background: #e74c3c; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
     </style>
 </head>
 <body class="light-mode">
@@ -95,14 +101,18 @@
                 <button onclick="showView('block-selection-screen')" style="background:none; color:var(--secondary); float:left; padding:0;"><i class="fas fa-chevron-left"></i> Change Block</button>
                 <h2 style="margin-top: 40px;">Block <span id="current-block-id">?</span> Subjects</h2>
             </div>
+            
+            <button class="btn-warning" style="width: 100%; margin-bottom: 20px; font-size: 1.1rem;" onclick="startMixedQuiz()"><i class="fas fa-random"></i> Start Mixed Block Quiz (20 Qs)</button>
+
             <div class="subject-grid" id="subject-list"></div>
         </section>
 
         <section id="quiz-screen" class="view hidden">
             <div class="card" style="text-align: left;">
-                <div style="display:flex; justify-content: space-between; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">
                     <span id="quiz-subject-title">Subject</span>
-                    <span id="quiz-progress">0 / 0</span>
+                    <span id="quiz-timer" class="timer-badge"><i class="far fa-clock"></i> 00:00</span>
+                    <span id="quiz-progress" style="color: var(--text);">0 / 0</span>
                 </div>
                 <h3 id="question-text">Loading...</h3>
                 <div id="options-list"></div>
@@ -111,6 +121,23 @@
                     <p><strong><i class="fas fa-info-circle"></i> Explanation:</strong></p>
                     <p id="explanation-text" style="line-height: 1.5;"></p>
                     <button class="btn-primary" style="width:100%; margin-top: 15px;" onclick="loadNextQuestion()">Next Question <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <section id="result-screen" class="view hidden">
+            <div class="card">
+                <h2>Quiz Complete!</h2>
+                <div class="score-circle" id="final-score-circle">0%</div>
+                <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+                    <h3 style="color: #27ae60;"><i class="fas fa-check-circle"></i> Correct: <span id="correct-count">0</span></h3>
+                    <h3 style="color: #e74c3c;"><i class="fas fa-times-circle"></i> Wrong: <span id="wrong-count">0</span></h3>
+                </div>
+                <button class="btn-primary" onclick="showView('dashboard-screen')">Back to Subjects</button>
+                
+                <div id="review-section" style="margin-top: 30px;" class="hidden">
+                    <h3 style="text-align: left; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Review Mistakes</h3>
+                    <div id="mistakes-list"></div>
                 </div>
             </div>
         </section>
@@ -155,12 +182,17 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Subjects configuration
         const commonSubjects = ["Pharmacology", "Pathology", "Medicine", "Forensic Medicine", "Community Medicine", "Surgery", "Behavioral Sciences", "Patient Safety"];
 
         let currentQuestions = [];
         let currentIndex = 0;
         let selectedBlock = null;
+
+        // Tier 1 State Variables
+        let scoreState = { correct: 0, wrong: 0 };
+        let mistakesLog = [];
+        let timerInterval;
+        let timeRemaining = 0;
 
         window.showView = (id) => {
             document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
@@ -173,7 +205,6 @@
             themeBtn.innerHTML = document.body.classList.contains('dark-mode') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         };
 
-        // Auth Functions
         window.login = () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
@@ -197,14 +228,12 @@
             }
         });
 
-        // App Logic
         window.selectBlock = (block) => {
             selectedBlock = block;
             document.getElementById('current-block-id').innerText = block;
             const list = document.getElementById('subject-list');
             list.innerHTML = '';
             
-            // Generate list: All common subjects + Family Medicine if Block 9
             let subjects = [...commonSubjects];
             if(block === 9) subjects.push("Family Medicine");
 
@@ -217,23 +246,72 @@
             showView('dashboard-screen');
         };
 
+        // Tier 1: Timer Logic
+        function startTimer(minutes) {
+            clearInterval(timerInterval);
+            timeRemaining = minutes * 60;
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting quiz.");
+                    finishQuiz();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const secs = (timeRemaining % 60).toString().padStart(2, '0');
+            document.getElementById('quiz-timer').innerHTML = `<i class="far fa-clock"></i> ${mins}:${secs}`;
+            if(timeRemaining < 60) document.getElementById('quiz-timer').style.background = "#c0392b"; // turn darker red when < 1 min
+            else document.getElementById('quiz-timer').style.background = "#e74c3c";
+        }
+
+        // Tier 1: Initialize fresh state for new quizzes
+        function initQuizState(questionsList, title) {
+            currentQuestions = questionsList;
+            if (currentQuestions.length === 0) return alert("No questions found.");
+            
+            currentIndex = 0;
+            scoreState = { correct: 0, wrong: 0 };
+            mistakesLog = [];
+            
+            document.getElementById('quiz-subject-title').innerText = title;
+            showView('quiz-screen');
+            
+            // Give 1 minute per question
+            startTimer(currentQuestions.length);
+            loadQuestion();
+        }
+
         window.startQuiz = async (subject) => {
             const q = query(collection(db, "mcqs"), 
                         where("subject", "==", subject), 
                         where("block", "==", Number(selectedBlock)));
             
             const snapshot = await getDocs(q);
-            currentQuestions = snapshot.docs.map(doc => doc.data()).sort(() => Math.random() - 0.5);
+            const questions = snapshot.docs.map(doc => doc.data()).sort(() => Math.random() - 0.5);
+            initQuizState(questions, subject);
+        };
+
+        // Tier 1: Mixed Block Random Quiz
+        window.startMixedQuiz = async () => {
+            // Fetch all questions for the current block
+            const q = query(collection(db, "mcqs"), where("block", "==", Number(selectedBlock)));
+            const snapshot = await getDocs(q);
+            let allQuestions = snapshot.docs.map(doc => doc.data());
             
-            if (currentQuestions.length === 0) return alert("No questions found.");
-            currentIndex = 0;
-            showView('quiz-screen');
-            loadQuestion();
+            // Shuffle and pick 20
+            allQuestions = allQuestions.sort(() => Math.random() - 0.5).slice(0, 20);
+            initQuizState(allQuestions, `Mixed Block ${selectedBlock} Quiz`);
         };
 
         function loadQuestion() {
             const data = currentQuestions[currentIndex];
-            document.getElementById('quiz-subject-title').innerText = data.subject;
             document.getElementById('quiz-progress').innerText = `${currentIndex + 1} / ${currentQuestions.length}`;
             document.getElementById('question-text').innerText = data.question;
             document.getElementById('explanation-box').classList.add('hidden');
@@ -247,8 +325,23 @@
                 btn.className = 'option-btn';
                 btn.dataset.letter = letter;
                 btn.innerHTML = `<strong>${letter}</strong>: ${optText}`;
+                
                 btn.onclick = () => {
                     const correct = data.correctAnswer.trim().toUpperCase();
+                    
+                    // Tier 1: Tracking score and mistakes
+                    if(letter === correct) {
+                        scoreState.correct++;
+                    } else {
+                        scoreState.wrong++;
+                        mistakesLog.push({
+                            question: data.question,
+                            yourAnswer: `${letter}: ${optText}`,
+                            correctAnswer: `${correct}: ${data['option' + correct]}`,
+                            explanation: data.explanation || "No explanation provided."
+                        });
+                    }
+
                     document.querySelectorAll('.option-btn').forEach(b => {
                         b.disabled = true;
                         if(b.dataset.letter === correct) b.classList.add('correct');
@@ -264,10 +357,40 @@
         window.loadNextQuestion = () => {
             currentIndex++;
             if (currentIndex < currentQuestions.length) loadQuestion();
-            else { alert("Module Complete!"); showView('dashboard-screen'); }
+            else finishQuiz();
         };
 
-        // ADMIN UPLOADS
+        // Tier 1: End Quiz Logic
+        function finishQuiz() {
+            clearInterval(timerInterval);
+            
+            const total = scoreState.correct + scoreState.wrong;
+            const percentage = total > 0 ? Math.round((scoreState.correct / total) * 100) : 0;
+            
+            document.getElementById('final-score-circle').innerText = `${percentage}%`;
+            document.getElementById('correct-count').innerText = scoreState.correct;
+            document.getElementById('wrong-count').innerText = scoreState.wrong;
+
+            const reviewSection = document.getElementById('review-section');
+            const mistakesList = document.getElementById('mistakes-list');
+            
+            if(mistakesLog.length > 0) {
+                reviewSection.classList.remove('hidden');
+                mistakesList.innerHTML = mistakesLog.map((m, i) => `
+                    <div class="mistake-card">
+                        <p><strong>Q${i+1}:</strong> ${m.question}</p>
+                        <p style="color: #e74c3c;"><strong>❌ You chose:</strong> ${m.yourAnswer}</p>
+                        <p style="color: #27ae60;"><strong>✅ Correct:</strong> ${m.correctAnswer}</p>
+                        <p style="font-size: 0.9em; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 5px;"><em>${m.explanation}</em></p>
+                    </div>
+                `).join('');
+            } else {
+                reviewSection.classList.add('hidden');
+            }
+
+            showView('result-screen');
+        }
+
         const processUpload = async (dataArray) => {
             let count = 0;
             for (const row of dataArray) {
