@@ -381,7 +381,8 @@
                         name: user.email.split('@')[0].toUpperCase(),
                         totalCorrect: 0,
                         streak: 0,
-                        lastDaily: null
+                        lastDaily: null,
+                        stats: {} // ADDED STATS OBJECT FOR ANALYTICS
                     });
                     document.getElementById('streak-display').innerText = "🔥 0";
                 } else {
@@ -410,21 +411,26 @@
             }
         });
 
-        function saveAnalytics(subject, isCorrect) {
-            let stats = JSON.parse(localStorage.getItem('medbytes_stats')) || {};
-            if(!stats[subject]) stats[subject] = { correct: 0, total: 0 };
-            stats[subject].total += 1;
-            if(isCorrect) stats[subject].correct += 1;
-            localStorage.setItem('medbytes_stats', JSON.stringify(stats));
-        }
-
-        window.renderAnalytics = () => {
-            let stats = JSON.parse(localStorage.getItem('medbytes_stats'));
+        // REWRITTEN TO FETCH FROM CLOUD INSTEAD OF LOCALSTORAGE
+        window.renderAnalytics = async () => {
             const panel = document.getElementById('analytics-panel');
-            if(!stats || Object.keys(stats).length === 0) { panel.classList.add('hidden'); return; }
+            if (!currentUserRef) return;
+            
+            const userSnap = await getDoc(currentUserRef);
+            if (!userSnap.exists() || !userSnap.data().stats) {
+                panel.classList.add('hidden');
+                return;
+            }
+            
+            let stats = userSnap.data().stats;
+            if(Object.keys(stats).length === 0) { 
+                panel.classList.add('hidden'); 
+                return; 
+            }
             
             panel.classList.remove('hidden');
             let weakestSub = ""; let lowestScore = 101; let breakdownHtml = "";
+            
             for(let sub in stats) {
                 if(stats[sub].total > 4) { 
                     let pct = Math.round((stats[sub].correct / stats[sub].total) * 100);
@@ -436,7 +442,7 @@
                 document.getElementById('weakest-subject-alert').innerHTML = `⚠️ Your weakest subject: <strong>${weakestSub} (${lowestScore}%)</strong>`;
                 document.getElementById('analytics-breakdown').innerHTML = breakdownHtml;
             } else {
-                document.getElementById('weakest-subject-alert').innerHTML = "Keep answering questions to unlock your weakness profile!";
+                document.getElementById('weakest-subject-alert').innerHTML = "Answer at least 5 questions in a subject to unlock your weakness profile!";
                 document.getElementById('analytics-breakdown').innerHTML = "";
             }
         };
@@ -564,7 +570,8 @@
                         scoreState.wrong++;
                         mistakesLog.push({ question: data.question, yourAnswer: `${letter}: ${optText}`, correctAnswer: `${correct}: ${data['option' + correct]}`, explanation: data.explanation || "No explanation provided." });
                     }
-                    saveAnalytics(data.subject, isCorrect);
+                    
+                    // Analytics logic prepared for batch update at the end of quiz
                     if(!currentQuizSubjects[data.subject]) currentQuizSubjects[data.subject] = { c: 0, t: 0 };
                     currentQuizSubjects[data.subject].t++;
                     if(isCorrect) currentQuizSubjects[data.subject].c++;
@@ -600,9 +607,23 @@
             document.getElementById('correct-count').innerText = scoreState.correct;
             document.getElementById('wrong-count').innerText = scoreState.wrong;
 
-            // Update user global score
-            if (currentUserRef && scoreState.correct > 0) {
-                await updateDoc(currentUserRef, { totalCorrect: increment(scoreState.correct) });
+            // --- CLOUD ANALYTICS BATCH SAVE ---
+            if (currentUserRef) {
+                const userSnap = await getDoc(currentUserRef);
+                let currentStats = userSnap.exists() && userSnap.data().stats ? userSnap.data().stats : {};
+                
+                // Merge this quiz's stats with the historical cloud stats
+                for(let sub in currentQuizSubjects) {
+                    if(!currentStats[sub]) currentStats[sub] = { correct: 0, total: 0 };
+                    currentStats[sub].total += currentQuizSubjects[sub].t;
+                    currentStats[sub].correct += currentQuizSubjects[sub].c;
+                }
+
+                // Update both the total score AND the new analytics stats in one call
+                let updates = { stats: currentStats };
+                if (scoreState.correct > 0) updates.totalCorrect = increment(scoreState.correct);
+                
+                await updateDoc(currentUserRef, updates);
             }
 
             // Process Streak if it was a Daily Quiz
