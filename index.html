@@ -74,12 +74,6 @@
         
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: var(--card); padding: 20px; border-radius: 10px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; text-align: left; }
-
-        /* Gamification Styles */
-        .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; background: rgba(0,0,0,0.02); margin-bottom: 5px; border-radius: 8px; font-size: 1.1rem;}
-        .leaderboard-item:nth-child(1) { background: rgba(241, 196, 15, 0.1); border-left: 5px solid #f1c40f; font-weight: bold; }
-        .leaderboard-item:nth-child(2) { background: rgba(189, 195, 199, 0.1); border-left: 5px solid #bdc3c7; font-weight: bold;}
-        .leaderboard-item:nth-child(3) { background: rgba(211, 84, 0, 0.1); border-left: 5px solid #d35400; font-weight: bold;}
     </style>
 </head>
 <body class="light-mode">
@@ -128,7 +122,6 @@
                 </div>
                 <div style="text-align: right;">
                     <div id="streak-display" style="font-size: 1.5rem; font-weight: bold; color: #e67e22;" title="Daily Streak">🔥 0</div>
-                    <button class="btn-primary" style="padding: 5px 10px; font-size: 0.8rem; margin-top: 5px;" onclick="openLeaderboard()"><i class="fas fa-trophy"></i> Leaderboard</button>
                 </div>
             </div>
 
@@ -205,17 +198,6 @@
             </div>
         </section>
 
-        <section id="leaderboard-screen" class="view hidden">
-            <div class="card">
-                <h2 style="color: var(--warning);"><i class="fas fa-trophy"></i> Top Students</h2>
-                <p>Ranked by total correct answers.</p>
-                <div id="leaderboard-list" style="text-align: left; margin-top: 20px; max-height: 400px; overflow-y: auto;">
-                    Loading leaderboard...
-                </div>
-                <button class="btn-secondary" style="width: 100%; margin-top: 20px;" onclick="showView('dashboard-screen')">Back to Dashboard</button>
-            </div>
-        </section>
-
         <section id="admin-screen" class="view hidden">
             <div class="card">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
@@ -285,8 +267,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-        // Added setDoc, getDoc, increment, orderBy, limit for Gamification
-        import { getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, setDoc, getDoc, increment, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        // Import Realtime Database for Session Logic
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
@@ -300,6 +283,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const rtdb = getDatabase(app); // Initialize Realtime DB
 
         const commonSubjects = ["Pharmacology", "Pathology", "Medicine", "Forensic Medicine", "Community Medicine", "Surgery", "Behavioral Sciences", "Patient Safety"];
 
@@ -327,25 +311,62 @@
             themeBtn.innerHTML = document.body.classList.contains('dark-mode') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         };
 
-        window.login = () => {
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value;
-            signInWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
-        };
-        window.register = () => {
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value;
-            createUserWithEmailAndPassword(auth, email, password).catch(e => alert(e.message));
-        };
-        window.handleLogout = () => signOut(auth).then(() => location.reload());
+        // --- SESSION LOGIC HELPER ---
+        async function establishSession(uid) {
+            const sessionId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+            localStorage.setItem('medbytes_session_id', sessionId);
+            await set(ref(rtdb, 'sessions/' + uid), sessionId);
+        }
 
-        // Setup User profile for Gamification on login
+        window.login = async () => {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                await establishSession(cred.user.uid);
+            } catch (e) {
+                alert(e.message);
+            }
+        };
+
+        window.register = async () => {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await establishSession(cred.user.uid);
+            } catch (e) {
+                alert(e.message);
+            }
+        };
+
+        window.handleLogout = () => signOut(auth).then(() => {
+            localStorage.removeItem('medbytes_session_id');
+            location.reload();
+        });
+
+        // Setup User profile & Session Check on login
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById('user-name-display').innerText = user.email.split('@')[0].toUpperCase();
                 document.getElementById('logout-btn').classList.remove('hidden');
                 if(user.email === 'themedbytes@gmail.com') document.getElementById('admin-btn').classList.remove('hidden');
                 
+                // --- SINGLE DEVICE SESSION CHECK ---
+                const localSessionId = localStorage.getItem('medbytes_session_id');
+                const sessionRef = ref(rtdb, 'sessions/' + user.uid);
+                
+                onValue(sessionRef, (snapshot) => {
+                    const dbSessionId = snapshot.val();
+                    // If DB has an ID, and it doesn't match the browser's local ID
+                    if (dbSessionId && localSessionId && dbSessionId !== localSessionId) {
+                        alert("You logged in from another device. This session will now be closed.");
+                        signOut(auth).then(() => {
+                            localStorage.removeItem('medbytes_session_id');
+                        });
+                    }
+                });
+
                 currentUserRef = doc(db, "users", user.uid);
                 const userSnap = await getDoc(currentUserRef);
                 const today = new Date().toDateString();
@@ -511,36 +532,10 @@
             initQuizState(allQuestions, `🔥 Daily Challenge`, 10);
         };
 
-        // NEW: Quit Quiz Function
         window.quitQuiz = () => {
             if(confirm("Are you sure you want to quit the current quiz? Progress will not be saved.")) {
                 clearInterval(timerInterval);
                 showView('dashboard-screen');
-            }
-        };
-
-        window.openLeaderboard = async () => {
-            showView('leaderboard-screen');
-            const listContainer = document.getElementById('leaderboard-list');
-            listContainer.innerHTML = "Loading...";
-            try {
-                const q = query(collection(db, "users"), orderBy("totalCorrect", "desc"), limit(10));
-                const snap = await getDocs(q);
-                let html = "";
-                let rank = 1;
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    html += `
-                    <div class="leaderboard-item">
-                        <div><strong>#${rank}</strong> ${data.name} <span style="font-size:0.8rem; color:var(--accent); margin-left: 10px;">🔥 ${data.streak||0}</span></div>
-                        <div><strong style="color:var(--secondary);">${data.totalCorrect||0}</strong> pts</div>
-                    </div>`;
-                    rank++;
-                });
-                listContainer.innerHTML = html || "<p>No users yet.</p>";
-            } catch (e) {
-                listContainer.innerHTML = "<p>Error loading leaderboard. Please ensure you have taken at least one quiz.</p>";
-                console.error(e);
             }
         };
 
