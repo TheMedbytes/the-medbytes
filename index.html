@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MedBytes | MBBS MCQ Portal</title>
+    
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MedBytes">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -315,7 +323,6 @@
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             try {
-                // Let onAuthStateChanged handle the session logic to prevent race conditions
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (e) {
                 alert(e.message);
@@ -326,7 +333,6 @@
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             try {
-                // Let onAuthStateChanged handle the session logic to prevent race conditions
                 await createUserWithEmailAndPassword(auth, email, password);
             } catch (e) {
                 alert(e.message);
