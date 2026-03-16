@@ -268,10 +268,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-        // Import Realtime Database for Session Logic
         import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
-        // *** UPDATED CONFIG WITH DATABASE URL ***
         const firebaseConfig = {
             apiKey: "AIzaSyDc-yEvFYvP8_OZedCyIqXjpEOnocOe87k",
             databaseURL: "https://the-medbytes-4e614-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -285,7 +283,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const rtdb = getDatabase(app); // Initialize Realtime DB
+        const rtdb = getDatabase(app); 
 
         const commonSubjects = ["Pharmacology", "Pathology", "Medicine", "Forensic Medicine", "Community Medicine", "Surgery", "Behavioral Sciences", "Patient Safety"];
 
@@ -313,19 +311,12 @@
             themeBtn.innerHTML = document.body.classList.contains('dark-mode') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         };
 
-        // --- SESSION LOGIC HELPER ---
-        async function establishSession(uid) {
-            const sessionId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-            localStorage.setItem('medbytes_session_id', sessionId);
-            await set(ref(rtdb, 'sessions/' + uid), sessionId);
-        }
-
         window.login = async () => {
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             try {
-                const cred = await signInWithEmailAndPassword(auth, email, password);
-                await establishSession(cred.user.uid);
+                // Let onAuthStateChanged handle the session logic to prevent race conditions
+                await signInWithEmailAndPassword(auth, email, password);
             } catch (e) {
                 alert(e.message);
             }
@@ -335,8 +326,8 @@
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value;
             try {
-                const cred = await createUserWithEmailAndPassword(auth, email, password);
-                await establishSession(cred.user.uid);
+                // Let onAuthStateChanged handle the session logic to prevent race conditions
+                await createUserWithEmailAndPassword(auth, email, password);
             } catch (e) {
                 alert(e.message);
             }
@@ -354,17 +345,27 @@
                 document.getElementById('logout-btn').classList.remove('hidden');
                 if(user.email === 'themedbytes@gmail.com') document.getElementById('admin-btn').classList.remove('hidden');
                 
-                // --- SINGLE DEVICE SESSION CHECK ---
-                const localSessionId = localStorage.getItem('medbytes_session_id');
+                // --- FIXED SINGLE DEVICE SESSION CHECK ---
                 const sessionRef = ref(rtdb, 'sessions/' + user.uid);
+                let currentLocalSessionId = localStorage.getItem('medbytes_session_id');
                 
+                // 1. If there's no local session ID, generate it HERE before starting the listener
+                if (!currentLocalSessionId) {
+                    currentLocalSessionId = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+                    localStorage.setItem('medbytes_session_id', currentLocalSessionId);
+                    await set(sessionRef, currentLocalSessionId);
+                }
+                
+                // 2. Start listening for changes from other devices
                 onValue(sessionRef, (snapshot) => {
                     const dbSessionId = snapshot.val();
-                    // If DB has an ID, and it doesn't match the browser's local ID
-                    if (dbSessionId && localSessionId && dbSessionId !== localSessionId) {
+                    const latestLocalId = localStorage.getItem('medbytes_session_id');
+                    
+                    if (dbSessionId && latestLocalId && dbSessionId !== latestLocalId) {
                         alert("You logged in from another device. This session will now be closed.");
                         signOut(auth).then(() => {
                             localStorage.removeItem('medbytes_session_id');
+                            location.reload();
                         });
                     }
                 });
